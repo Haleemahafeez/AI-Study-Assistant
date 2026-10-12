@@ -1,0 +1,132 @@
+
+# ==================================================
+# AI STUDY ASSISTANT
+# Beginner-friendly AI project using Gemini
+# ==================================================
+
+!pip -q install -U google-genai
+
+from google import genai
+from getpass import getpass
+
+print("=" * 45)
+print("         AI STUDY ASSISTANT")
+print("=" * 45)
+print("Your personal AI learning assistant!")
+print("Ask questions about Python, AI, and studying.")
+print("=" * 45)
+
+# STEP 1: Securely enter your API key
+api_key = getpass("Enter your Gemini API key: ")
+
+# STEP 2: Connect to Gemini
+client = genai.Client(api_key=api_key)
+
+# STEP 3: Find an available text-generation model
+print("\nFinding an available AI model...")
+
+chosen_model = None
+preferred_models = [
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash"
+]
+
+available_models = []
+
+for model in client.models.list():
+    supported = getattr(model, "supported_actions", None) or []
+    model_name = model.name.replace("models/", "")
+
+    if "generateContent" in supported:
+        available_models.append(model_name)
+
+for preferred in preferred_models:
+    if preferred in available_models:
+        chosen_model = preferred
+        break
+
+if chosen_model is None:
+    for name in available_models:
+        if "flash" in name.lower() and "preview" not in name.lower():
+            chosen_model = name
+            break
+
+if chosen_model is None:
+    raise Exception(
+        "No suitable text model found. Check API access and available models."
+    )
+
+print("Selected model:", chosen_model)
+
+# STEP 4: Test the connection
+print("\nTesting AI connection...")
+
+test_response = client.models.generate_content(
+    model=chosen_model,
+    contents="Explain Artificial Intelligence in two simple sentences."
+)
+
+print("\nConnection successful!")
+print("AI:", test_response.text)
+
+# STEP 5: Start the study assistant
+print("\n" + "=" * 45)
+print("        YOUR ASSISTANT IS READY")
+print("=" * 45)
+print("Examples of questions:")
+print("- Explain Python loops simply.")
+print("- What is Artificial Intelligence?")
+print("- Make a 7-day beginner study plan.")
+print("- Explain machine learning with an example.")
+print("\nType 'exit' to stop the assistant.")
+
+# Keep a simple conversation history
+history = []
+
+while True:
+    question = input("\nYou: ").strip()
+
+    if question.lower() == "exit":
+        print("\nThank you for using AI Study Assistant!")
+        break
+
+    if not question:
+        print("Please type a question.")
+        continue
+
+    history.append("Student: " + question)
+
+    prompt = """
+You are a friendly AI Study Assistant for beginner students.
+
+Your tasks:
+1. Explain Python, Computer Science, and AI in simple language.
+2. Give clear examples.
+3. Help students plan their studies.
+4. Encourage understanding instead of memorization.
+5. If you are unsure of a fact, say so honestly.
+
+Recent conversation:
+""" + "\n".join(history[-6:]) + "\nAssistant:"
+
+    try:
+        print("\nThinking...")
+
+        response = client.models.generate_content(
+            model=chosen_model,
+            contents=prompt
+        )
+
+        answer = response.text or "Sorry, no text response was returned."
+        print("\nAI Study Assistant:\n")
+        print(answer)
+
+        history.append("Assistant: " + answer)
+
+    except Exception as error:
+        print("\nAn error occurred:", str(error))
+        print("Check your internet, API key, model access, and usage limits.")
+
+print("\nProject finished.")
